@@ -330,6 +330,9 @@ exports.withdrawUser = catchAsyncError(async (req, res, next) => {
   if(user.fundingBalance<10){
     return next(new ErrorHandler("Invalid Fund", 401))
   }
+  if(amount<10){
+    return next(new ErrorHandler("Initial withdraw is 10 usdt", 401))
+  }
 
   const isPasswordMatched = await user.comparePassword(password);
 
