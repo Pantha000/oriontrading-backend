@@ -1,4 +1,5 @@
 const catchAsyncError = require("../middleware/catchAsyncError");
+const crypto = require("crypto")
 const ErrorHandler = require("../utils/errorhandler");
 const User = require("../models/userModel");
 const sendToken = require("../utils/jwtToken");
@@ -6,7 +7,9 @@ const sendMail = require("../utils/sendMail");
 const cloudinary = require("cloudinary");
 const KYC = require("../models/verifyKYCModel")
 const Deposit = require("../models/depositModel")
-const crypto = require("crypto")
+const Withdraw = require("../models/withdrawModel")
+const OTS = require("../models/otsModel")
+const Transfer = require("../models/transferModel")
 
 
 //Register User
@@ -163,7 +166,7 @@ exports.resetPassword = catchAsyncError(async (req, res, next) => {
 
 //Get User Details
 exports.getUserDetails = catchAsyncError(async (req, res, next) => {
-  const  user = await User.findById(req.user.id)
+  const  user = await User.findById(req.user.id).populate("fundingHistory.history").populate("spotHistory.history").populate("aiHistory.history")
   res.status(200).json({
     success: true,
     user,
@@ -209,38 +212,6 @@ exports.userVerification = catchAsyncError(async (req, res, next) => {
   });
 });
 
-//Deposit User
-exports.depositUser = catchAsyncError(async (req, res, next) => {
-  const { amount, trxId, trxProof } = req.body;
-  const  user = await User.findById(req.user.id)
-
-  const trxProofImage = await cloudinary.v2.uploader.upload(trxProof, {
-    folder: "deposit",
-  });
-   
-  const deposit = await Deposit.create({
-    trxProof:trxProofImage.secure_url,
-    trxId, 
-    amount,
-    currency:"USDT",
-    user: user._id
-  });
-  await user.deposit.push(deposit._id)
-  await user.save()
-  // await User.findByIdAndUpdate(user._id, {
-  //   kyc: dep._id,
-
-  // }, {
-  //       new: true,
-  //       runValidators: true,
-  //       useFindAndModify: false,
-  // })
-  
-  res.status(200).json({
-    success: true,
-    message: "Successfully Deposit Created"
-  });
-});
 
 //Update Password Sent Token
 exports.sentUpdatePasswordToken = catchAsyncError(async(req,res, next)=>{
@@ -320,6 +291,321 @@ exports.updateProfile = catchAsyncError(async (req, res, next) => {
     user,
   });
 });
+
+//Deposit User
+exports.depositUser = catchAsyncError(async (req, res, next) => {
+  const { amount, trxId, trxProof } = req.body;
+  const  user = await User.findById(req.user.id)
+
+  const trxProofImage = await cloudinary.v2.uploader.upload(trxProof, {
+    folder: "deposit",
+  });
+   
+  const deposit = await Deposit.create({
+    trxProof:trxProofImage.secure_url,
+    trxId, 
+    amount,
+    currency:"USDT",
+    user: user._id
+  });
+  await user.deposit.push(deposit._id)
+  await user.save()
+  
+  
+  res.status(200).json({
+    success: true,
+    message: "Successfully Deposit Created"
+  });
+});
+
+//Withdraw User
+exports.withdrawUser = catchAsyncError(async (req, res, next) => {
+  const { amount, address, password } = req.body;
+  const  user = await User.findById(req.user.id).select("+password")
+
+  if(user.fundingBalance<amount){
+    return next(new ErrorHandler("Invalid Fund", 401))
+  }
+
+  if(user.fundingBalance<10){
+    return next(new ErrorHandler("Invalid Fund", 401))
+  }
+
+  const isPasswordMatched = await user.comparePassword(password);
+
+  if (!isPasswordMatched) {
+    return next(new ErrorHandler("Invalid Password", 401));
+  }
+  // console.log(password)
+  
+  const withdraw = await Withdraw.create({
+    address, 
+    amount,
+    user: user._id
+  });
+
+  const fundingBalance = user.fundingBalance - amount
+
+  await User.findByIdAndUpdate(user._id, { fundingBalance: fundingBalance}, {
+    new: true,
+    runValidators: true,
+    useFindAndModify: false,
+  });
+
+  await user.withdraw.push(withdraw._id)
+  await user.save()
+  
+  
+  res.status(200).json({
+    success: true,
+    message: "Successfully Withdraw Created"
+  });
+  
+   
+  
+});
+
+//Funding To Spot
+exports.fundingToSpot= catchAsyncError(async (req, res, next)=>{
+  const {amount} = req.body
+  const user = await User.findById(req.user.id)
+  
+  if(user.fundingBalance < amount){
+    return next(new ErrorHandler("Invalid Fund", 502))
+  }
+
+  const fundingBalance = user.fundingBalance - amount;
+  const spotBalance = user.spotBalance + amount;
+
+  const transfer = await Transfer.create({
+    amount,
+    user: user._id,
+    title:"Spot Generated Bonus",
+    desc:"8% Spot Generation 2nd Level",
+    sendWallet:"Funding",
+    reciveWallet:"Spot"
+  })
+
+  await User.findByIdAndUpdate(user._id, { fundingBalance: fundingBalance}, {
+    new: true,
+    runValidators: true,
+    useFindAndModify: false,
+  });
+  await User.findByIdAndUpdate(user._id, { spotBalance: spotBalance}, {
+    new: true,
+    runValidators: true,
+    useFindAndModify: false,
+  });
+
+
+  await user.fundingHistory.push({
+    history:transfer._id,
+    status:"Out"
+  })
+  await user.spotHistory.push({
+    history:transfer._id,
+    status:"In"
+  })
+  await user.save();
+
+  res.status(200).json({
+    success: true,
+    message: "Successfully Amount Transfered"
+  });
+})
+
+//Spot To AI
+exports.spotTransfer= catchAsyncError(async (req, res, next)=>{
+  const {amount, wallet} = req.body
+  const user = await User.findById(req.user.id)
+  
+  if(user.spotBalance < amount){
+    return next(new ErrorHandler("Invalid Fund", 502))
+  }
+
+  if(wallet ==="AI"){
+    const aiBalance = user.aiBalance + amount;
+    const spotBalance = user.spotBalance - amount;
+
+    const transfer = await Transfer.create({
+      amount,
+      user: user._id,
+      title:"Spot Generated Bonus",
+      desc:"8% Spot Generation 2nd Level",
+      sendWallet:"Spot",
+      reciveWallet:"AI"
+    })
+
+    await User.findByIdAndUpdate(user._id, { aiBalance: aiBalance}, {
+      new: true,
+      runValidators: true,
+      useFindAndModify: false,
+    });
+    await User.findByIdAndUpdate(user._id, { spotBalance: spotBalance}, {
+      new: true,
+      runValidators: true,
+      useFindAndModify: false,
+    });
+
+
+    await user.aiHistory.push({
+      history:transfer._id,
+      status:"In"
+    })
+    await user.spotHistory.push({
+      history:transfer._id,
+      status:"Out"
+    })
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Successfully Amount Transfered"
+    });
+  }
+  if(wallet==="Funding"){
+    const fundingBalance = user.fundingBalance + amount;
+    const spotBalance = user.spotBalance - amount;
+
+    const transfer = await Transfer.create({
+      amount,
+      user: user._id,
+      title:"Spot Generated Bonus",
+      desc:"8% Spot Generation 2nd Level",
+      sendWallet:"Spot",
+      reciveWallet:"Funding"
+    })
+
+    await User.findByIdAndUpdate(user._id, { fundingBalance: fundingBalance}, {
+      new: true,
+      runValidators: true,
+      useFindAndModify: false,
+    });
+    await User.findByIdAndUpdate(user._id, { spotBalance: spotBalance}, {
+      new: true,
+      runValidators: true,
+      useFindAndModify: false,
+    });
+
+
+    await user.fundingHistory.push({
+      history:transfer._id,
+      status:"In"
+    })
+    await user.spotHistory.push({
+      history:transfer._id,
+      status:"Out"
+    })
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Successfully Amount Transfered"
+    });
+  }
+})
+
+//AI To Spot
+exports.aiToSpot= catchAsyncError(async (req, res, next)=>{
+  const {amount} = req.body
+  const user = await User.findById(req.user.id)
+  
+  if(user.aiBalance < amount){
+    return next(new ErrorHandler("Invalid Fund", 502))
+  }
+
+  const aiBalance = user.aiBalance - amount;
+  const spotBalance = user.spotBalance + amount;
+
+  const transfer = await Transfer.create({
+    amount,
+    user: user._id,
+    title:"AI Generated Bonus",
+    desc:"8% AI Generation 2nd Level",
+    sendWallet:"AI",
+    reciveWallet:"Spot"
+  })
+
+  await User.findByIdAndUpdate(user._id, { aiBalance: aiBalance}, {
+    new: true,
+    runValidators: true,
+    useFindAndModify: false,
+  });
+  await User.findByIdAndUpdate(user._id, { spotBalance: spotBalance}, {
+    new: true,
+    runValidators: true,
+    useFindAndModify: false,
+  });
+
+
+  await user.aiHistory.push({
+    history:transfer._id,
+    status:"Out"
+  })
+  await user.spotHistory.push({
+    history:transfer._id,
+    status:"In"
+  })
+  await user.save();
+
+  res.status(200).json({
+    success: true,
+    message: "Successfully Amount Transfered"
+  });
+})
+
+
+//OTS Transfer
+exports.otsTransfer = catchAsyncError(async (req, res, next) => {
+  const { amount, reciver, charge } = req.body;
+  const  sender = await User.findById(req.user.id)
+  const  reciverUser  = await User.findOne({userId: reciver})
+
+  if(JSON.stringify(sender._id)===JSON.stringify(reciverUser._id)){
+    return next(new ErrorHandler("User Not Found", 404))
+  }
+  if(!reciver){
+    return next(new ErrorHandler("User Not Found", 404))
+  }
+
+  const senderBalance = sender.fundingBalance - amount - charge
+  const reciverBalance = reciverUser.fundingBalance + amount
+
+  if(sender.fundingBalance<(amount+charge)){
+    return next(new ErrorHandler("Invalid Fund", 404))
+  }else{
+    const ots = await OTS.create({
+      reciver: reciverUser._id, 
+      amount,
+      sender: sender._id,
+      charge
+    });
+    
+    await User.findByIdAndUpdate(sender._id, { fundingBalance: senderBalance}, {
+      new: true,
+      runValidators: true,
+      useFindAndModify: false,
+    });
+    await sender.otsHistory.sent.push(ots._id)
+    await sender.save()
+    await User.findByIdAndUpdate(reciverUser._id, { fundingBalance: reciverBalance}, {
+      new: true,
+      runValidators: true,
+      useFindAndModify: false,
+    });
+    await reciverUser.otsHistory.recive.push(ots._id)
+    await reciverUser.save()
+    
+    
+    res.status(200).json({
+      success: true,
+      message: "Successfully Amount Transfered"
+    });
+  }
+   
+  
+});
+
 
 // // Update Avatar Image
 // exports.updateAvatar = catchAsyncError(async (req, res, next) => {

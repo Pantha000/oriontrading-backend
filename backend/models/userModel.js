@@ -50,20 +50,78 @@ const userSchema = new mongoose.Schema({
         ref:"user"
     }
   ],
-  currency:{
-    funding:{
-      type:Number,
-    },
-    spot:{
-      type:Number,
-    }
-  },
+  
   deposit:[
     {
       type:mongoose.Schema.Types.ObjectId,
       ref:"deposit"
     }
   ],
+  withdraw:[
+    {
+      type:mongoose.Schema.Types.ObjectId,
+      ref:"withdraw"
+    }
+  ],
+  spotBalance:{
+    type:Number,
+    default:0,
+  },
+  fundingBalance:{
+    type:Number,
+    default:0,
+  },
+  aiBalance:{
+      type:Number,
+      default:0,
+  },
+  fundingHistory:[
+    {
+      history:{
+        type:mongoose.Schema.Types.ObjectId,
+        ref:"transfer"
+      },
+      status:{
+        type:String,
+      }
+    }
+  ],
+  spotHistory:[
+    {
+      history:{
+        type:mongoose.Schema.Types.ObjectId,
+        ref:"transfer"
+      },
+      status:{
+        type:String,
+      }
+    }
+  ],
+  aiHistory:[
+    {
+      history:{
+        type:mongoose.Schema.Types.ObjectId,
+        ref:"transfer"
+      },
+      status:{
+        type:String,
+      }
+    }
+  ],
+  otsHistory:{
+    sent:[
+      {
+        type:mongoose.Schema.Types.ObjectId,
+        ref:"ots"
+      }
+    ],
+    recive:[
+      {
+        type:mongoose.Schema.Types.ObjectId,
+        ref:"ots"
+      }
+    ]
+  },
   createdAt: {
     type: Date,
     default: Date.now(),

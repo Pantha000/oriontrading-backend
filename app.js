@@ -17,9 +17,12 @@ app.use(cors({origin: "*"}))
 
 //Route Imports
 const user = require("./backend/routes/userRoutes");
+const admin= require("./backend/routes/adminRoutes")
 
 
 app.use("/api/v1", user);
+app.use("/api/v1", admin)
+// app.use("/api/v1")
 
 app.use(errorMiddleware);
 
