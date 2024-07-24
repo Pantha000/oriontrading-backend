@@ -9,7 +9,8 @@ const KYC = require("../models/verifyKYCModel")
 const Deposit = require("../models/depositModel")
 const Withdraw = require("../models/withdrawModel")
 const OTS = require("../models/otsModel")
-const Transfer = require("../models/transferModel")
+const Transfer = require("../models/transferModel");
+const { type } = require("os");
 
 
 //Register User
@@ -297,10 +298,16 @@ exports.depositUser = catchAsyncError(async (req, res, next) => {
   const { amount, trxId, trxProof } = req.body;
   const  user = await User.findById(req.user.id)
 
+  if(!amount){
+    return next(new ErrorHandler("Please enter valid amount", 401))
+  }
   const trxProofImage = await cloudinary.v2.uploader.upload(trxProof, {
     folder: "deposit",
   });
    
+  // if(amount){
+  //   return next(new ErrorHandler("Please enter number", 401))
+  // }
   const deposit = await Deposit.create({
     trxProof:trxProofImage.secure_url,
     trxId, 
@@ -322,6 +329,10 @@ exports.depositUser = catchAsyncError(async (req, res, next) => {
 exports.withdrawUser = catchAsyncError(async (req, res, next) => {
   const { amount, address, password } = req.body;
   const  user = await User.findById(req.user.id).select("+password")
+
+  if(!amount){
+    return next(new ErrorHandler("Please enter valid amount", 401))
+  }
 
   if(user.fundingBalance<amount){
     return next(new ErrorHandler("Invalid Fund", 401))
@@ -372,7 +383,10 @@ exports.withdrawUser = catchAsyncError(async (req, res, next) => {
 exports.fundingToSpot= catchAsyncError(async (req, res, next)=>{
   const {amount} = req.body
   const user = await User.findById(req.user.id)
-  
+
+  if(!amount){
+    return next(new ErrorHandler("Please enter valid amount", 401))
+  }
   if(user.fundingBalance < amount){
     return next(new ErrorHandler("Invalid Fund", 502))
   }
@@ -417,11 +431,14 @@ exports.fundingToSpot= catchAsyncError(async (req, res, next)=>{
   });
 })
 
-//Spot To AI
+//Spot Transfer
 exports.spotTransfer= catchAsyncError(async (req, res, next)=>{
   const {amount, wallet} = req.body
   const user = await User.findById(req.user.id)
   
+  if(!amount){
+    return next(new ErrorHandler("Please enter valid amount", 401))
+  }
   if(user.spotBalance < amount){
     return next(new ErrorHandler("Invalid Fund", 502))
   }
@@ -513,6 +530,10 @@ exports.aiToSpot= catchAsyncError(async (req, res, next)=>{
   const {amount} = req.body
   const user = await User.findById(req.user.id)
   
+  if(!amount){
+    return next(new ErrorHandler("Please enter valid amount", 401))
+  }
+
   if(user.aiBalance < amount){
     return next(new ErrorHandler("Invalid Fund", 502))
   }
@@ -564,6 +585,9 @@ exports.otsTransfer = catchAsyncError(async (req, res, next) => {
   const  sender = await User.findById(req.user.id)
   const  reciverUser  = await User.findOne({userId: reciver})
 
+  if(!amount){
+    return next(new ErrorHandler("Please enter valid amount", 401))
+  }
   if(JSON.stringify(sender._id)===JSON.stringify(reciverUser._id)){
     return next(new ErrorHandler("User Not Found", 404))
   }

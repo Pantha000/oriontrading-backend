@@ -78,7 +78,7 @@ exports.withdrawRequest = catchAsyncError(async (req, res, next) => {
 
 //Load User Debit
 exports.loadUserWithdraw = catchAsyncError(async (req, res, next) => {
-const { userId, status, withdrawId} = req.body;
+const { userId, amount, status, withdrawId} = req.body;
 const user = await User.findById(userId)
 const withdraw = await Withdraw.findById(withdrawId)
 
@@ -90,19 +90,28 @@ if(!withdraw){
 }
 
 if(status==="Paid"){
- 
   const withdrawStatus = {
       status: status
   }
+ 
   await Withdraw.findByIdAndUpdate(withdraw._id, withdrawStatus, {
         new: true,
         runValidators: true,
         useFindAndModify: false,
   });
 } else if(status ==="Rejected"){
+  const userBalance = user.fundingBalance + amount
+  const newUserData = {
+    fundingBalance:userBalance
+  }
   const withdrawStatus = {
     status: status
   }
+  await User.findByIdAndUpdate(user._id, newUserData, {
+    new: true,
+    runValidators: true,
+    useFindAndModify: false,
+  });
   await Withdraw.findByIdAndUpdate(withdraw._id, withdrawStatus, {
     new: true,
     runValidators: true,
