@@ -241,6 +241,7 @@ exports.sentUpdatePasswordToken = catchAsyncError(async(req,res, next)=>{
   }
 })
 
+
 //Update User Password
 exports.updatePassword = catchAsyncError(async (req, res, next) => {
  //Creating Token Hash
@@ -268,6 +269,57 @@ const user = await User.findOne({
 
   sendToken(user, 200, res );
 });
+
+//Update Phone Sent Token
+exports.sentUpdatePhoneToken = catchAsyncError(async(req,res, next)=>{
+  const user = await User.findById(req.user._id)
+  //Get Reset Password Token
+  const resetToken = user.getUpdatePhoneToken();
+  await user.save({ validateBeforeSave: false });
+  const message = `Your password Update token is :-\n\n ${resetToken}\n\nIf you have not requested this email then, please ignore it`;
+
+  try {
+    await sendMail({
+      email: user.email,
+      subject: `Orion Trading -- Phone Update Token`,
+      message,
+    });
+    res.status(200).json({
+      success: true,
+      message: `Email sent to ${user.email} successfully`,
+    });
+  } catch (error) {
+    user.updatePhoneToken = undefined;
+    user.updatePhoneExpire = undefined;
+
+    await user.save({ validateBeforeSave: false });
+    return next(new ErrorHandler(error.message, 500));
+  }
+})
+
+//Update User Phone Number
+exports.updatePhone = catchAsyncError(async (req, res, next) => {
+  //Creating Token Hash
+  const updatePhoneToken = crypto
+  .createHash("sha256")
+  .update(req.body.token)
+  .digest("hex");
+ 
+ const user = await User.findOne({
+  updatePhoneToken,
+  updatePhoneExpire: { $gt: Date.now() },
+ })
+ 
+  
+   user.phone = req.body.phone;
+   await user.save();
+ 
+   res.status(200).json({
+    success: true,
+    message:"Successfully Phone Number Changed!",
+  });
+ });
+
 
 //Update User Profile
 exports.updateProfile = catchAsyncError(async (req, res, next) => {
@@ -631,6 +683,36 @@ exports.otsTransfer = catchAsyncError(async (req, res, next) => {
   }
    
   
+});
+
+//Trade Option
+exports.tradeOption = catchAsyncError(async (req, res, next) => {
+  const { status } = req.body;
+  const  user = await User.findById(req.user.id)
+
+  
+  
+    if(status === true){
+      await User.findByIdAndUpdate(user._id, { tradeStatus: false}, {
+        new: true,
+        runValidators: true,
+        useFindAndModify: false,
+      });
+      res.status(200).json({
+        success: true,
+        message: "Successfull"
+      });
+    }else{
+      await User.findByIdAndUpdate(user._id, { tradeStatus: true}, {
+        new: true,
+        runValidators: true,
+        useFindAndModify: false,
+      });
+      res.status(200).json({
+        success: true,
+        message: "Successfull"
+      });
+    }
 });
 
 

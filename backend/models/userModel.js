@@ -36,6 +36,9 @@ const userSchema = new mongoose.Schema({
   city:{
     type:String,
   },
+  address:{
+    type:String,
+  },
   kyc:{
     type:mongoose.Schema.Types.ObjectId,
     ref:"kyc"
@@ -43,6 +46,10 @@ const userSchema = new mongoose.Schema({
   verified:{
     type: Boolean,
     default: false
+  },
+  tradeStatus:{
+    type:Boolean,
+    default:false
   },
   team:[
     {
@@ -142,6 +149,9 @@ const userSchema = new mongoose.Schema({
 
   updatePasswordToken:String,
   updatePasswordExpire:String,
+
+  updatePhoneToken:String,
+  updatePhoneExpire:String,
 });
 
 //Hashing Password
@@ -191,6 +201,21 @@ userSchema.methods.getUpdatePasswordToken = function () {
     .digest("hex");
 
   this.updatePasswordExpire = Date.now() + 15 * 60 * 1000;
+  return resetToken;
+};
+
+//Generating Phone Update Token
+userSchema.methods.getUpdatePhoneToken = function () {
+  //Generating Token
+  const resetToken = crypto.randomBytes(20).toString("hex");
+
+  //Hashing and adding resetPasswordToken to userSchema
+  this.updatePhoneToken = crypto
+    .createHash("sha256")
+    .update(resetToken)
+    .digest("hex");
+
+  this.updatePhoneExpire = Date.now() + 15 * 60 * 1000;
   return resetToken;
 };
 
