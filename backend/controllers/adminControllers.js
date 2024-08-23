@@ -198,7 +198,7 @@ exports.allBalance = catchAsyncError(async (req, res, next) => {
      withdrawAmount+=withdraw[i].amount
    }
 
-   let total = depositAmount - withdrawAmount
+  let total = depositAmount - withdrawAmount
   res.status(200).json({
     success: true,
     depositAmount,
@@ -240,12 +240,27 @@ exports.getDepositBalance = catchAsyncError(async (req, res, next) => {
 });
 
 //Pending Withdraw
+exports.pendingDeposit = catchAsyncError(async (req, res, next) => {
+  const depositAll = await  Deposit.find().populate("user")
+  let deposit =[]
+  for(var i=0; i<depositAll.length; i++){
+    if(depositAll[i].status==="Pending"){
+      deposit.push(depositAll[i])
+    }
+  }
+  res.status(200).json({
+    success: true,
+    deposit
+  });
+});
+
+//Pending Withdraw
 exports.pendingWithdraw = catchAsyncError(async (req, res, next) => {
   const withdrawAll = await  Withdraw.find().populate("user")
   let withdraw =[]
-  for(var i=0; i<withdraw.length; i++){
+  for(var i=0; i<withdrawAll.length; i++){
     if(withdrawAll[i].status==="Pending"){
-      withdraw.push(withdraw[i])
+      withdraw.push(withdrawAll[i])
     }
   }
   res.status(200).json({
@@ -342,7 +357,7 @@ exports.adminAddReff = catchAsyncError(async (req, res, next) => {
 });
 
 //All KYC request
-exports.getAllKyc = catchAsyncError(async (req, res, next) => {
+exports.getPendingKyc = catchAsyncError(async (req, res, next) => {
   const kycAll = await  KYC.find().populate("user")
   const kyc = []
   for(var i=0; i<kycAll.length; i++){
@@ -393,7 +408,7 @@ exports.updateKYC = catchAsyncError(async (req, res, next) => {
 //Delete KYC
 exports.deleteKYC = catchAsyncError(async (req, res, next) => {
   const user = await  User.findById(req.body.id)
-  const kyc = await KYC.findById(req.body.id);
+  const kyc = await KYC.findById(req.body.kyc);
   
   if(!user){
     return next(new ErrorHandler("User Not Found", 404))
@@ -453,7 +468,7 @@ exports.createStaff = catchAsyncError(async (req, res, next) => {
 //Edit Staff
 exports.deleteStaff = catchAsyncError(async (req, res, next) => {
 
-  const staff = await Staff.findById(req.body.id);
+  const staff = await Staff.findById(req.body.staffId);
   if (!staff) {
     return next(new ErrorHandler("Staff Not Found", 404));
   }
@@ -478,7 +493,7 @@ exports.getAllSubscriber = catchAsyncError(async (req, res, next) => {
 
 //Subscriber Message
 exports.subscriberMessage = catchAsyncError(async (req, res, next) => {
-  const subscriber = await Subscriber.findById(req.body.id).populate("user")
+  const subscriber = await Subscriber.findById(req.body.subscriberId).populate("user")
   const message = `${req.body.message}`;
 
   try {
