@@ -19,7 +19,7 @@ router.route("/all/reffer/user").get(allUserReffer)
 router.route("/admin/reffer").put(adminAddReff)
 
 router.route("/all/balance").get(allBalance)
-router.route("/deposit/balance").get(getDepositBalance)
+router.route("/pending/deposit").get(getDepositBalance)
 router.route("/pending/withdraw").get(pendingWithdraw)
 router.route("/withdraw/balance").get(getWithdrawBalance)
 
