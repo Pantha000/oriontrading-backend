@@ -11,6 +11,7 @@ const Withdraw = require("../models/withdrawModel")
 const OTS = require("../models/otsModel")
 const Transfer = require("../models/transferModel");
 const { type } = require("os");
+const Subscriber = require("../models/subsriberModel")
 
 
 //Register User
@@ -714,6 +715,33 @@ exports.tradeOption = catchAsyncError(async (req, res, next) => {
       });
     }
 });
+
+//Add Subscriber
+exports.addSubscription = catchAsyncError(async (req, res, next) => {
+  
+
+
+    await Subscriber.create({user:req.user._id})
+
+  
+  res.status(200).json({
+    success: true,
+    message: "Successfull"
+  });
+});
+
+//Delete Subscriber
+exports.deleteSubscription = catchAsyncError(async (req, res, next) => {
+  const subscriber = await Subscriber.findOne({user:req.user._id})
+  await Subscriber.findByIdAndDelete(subscriber._id)
+
+
+  res.status(200).json({
+    success: true,
+    message: "Successfull"
+  });
+});
+
 
 
 // // Update Avatar Image

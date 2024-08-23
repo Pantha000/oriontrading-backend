@@ -23,6 +23,10 @@ const kycSchema = new mongoose.Schema({
   dob:{
     type:Date,
   },
+  status:{
+    type:String,
+    default:"Pending"
+  },
   createdAt:{
     type:Date,
     default:Date.now()

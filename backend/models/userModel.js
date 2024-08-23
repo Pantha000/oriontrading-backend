@@ -52,10 +52,12 @@ const userSchema = new mongoose.Schema({
     default:false
   },
   team:[
-    {
+   {
+   
         type:mongoose.Schema.Types.ObjectId,
         ref:"user"
-    }
+      
+   }
   ],
   
   deposit:[

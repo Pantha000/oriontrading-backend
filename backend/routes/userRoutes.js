@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { isAuthenticatedUser, authorizeRoles } = require("../middleware/auth");
-const {registerUser, loginUser, logout, forgotPassword, resetPassword, getUserDetails, userVerification, depositUser, sentUpdatePasswordToken, updatePassword, updateProfile, withdrawUser, otsTransfer, fundingToSpot, spotTransfer, aiToSpot, tradeOption, updatePhone, sentUpdatePhoneToken} = require("../controllers/userControllers")
+const {registerUser, loginUser, logout, forgotPassword, resetPassword, getUserDetails, userVerification, depositUser, sentUpdatePasswordToken, updatePassword, updateProfile, withdrawUser, otsTransfer, fundingToSpot, spotTransfer, aiToSpot, tradeOption, updatePhone, sentUpdatePhoneToken, addSubscription, deleteSubscription} = require("../controllers/userControllers")
 
 router.route("/register/user").post(registerUser);
 router.route("/login").post(loginUser);
@@ -25,6 +25,9 @@ router.route("/spot/transfer").put(isAuthenticatedUser, authorizeRoles("user"), 
 router.route("/ai/to/spot").put(isAuthenticatedUser, authorizeRoles("user"), aiToSpot)
 router.route("/trade/status").put(isAuthenticatedUser, authorizeRoles("user"), tradeOption)
 
+
+router.route("/subscribe").post(isAuthenticatedUser, authorizeRoles("user"),addSubscription)
+router.route("/delete/subscribe").delete(deleteSubscription, authorizeRoles("user"), deleteSubscription)
 // router.route("/user/avatar/update").put(isAuthenticatedUser, authorizeRoles("user"), updateAvatar)
 // router.route("/me/update").put(isAuthenticatedUser, updateProfile);
 // router.route("/me/update/avatar").put(isAuthenticatedUser, updateAvatar);
